@@ -17,5 +17,5 @@ powershell "[System.Reflection.Assembly]::LoadWithPartialName('System.IO.Compres
 :: Deleting the "build" folder
 rmdir /s /q "build"
 :: Build succeeded!
-copy %foldername%.rmod D:\Steam\steamapps\common\Raft\mods\%foldername%.rmod
+copy %foldername%.rmod G:\Games\Steam\steamapps\common\Raft\mods\%foldername%.rmod
 EXIT
