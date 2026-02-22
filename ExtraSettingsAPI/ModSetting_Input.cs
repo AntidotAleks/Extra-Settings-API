@@ -84,7 +84,7 @@ namespace _ExtraSettingsAPI
             
             if (contentType != InputField.ContentType.Custom) return;
             var mod = parent.parent;
-            input.onValidateInput += ExtraSettingsAPI.mods[mod].GetInputValidation(name);
+            input.onValidateInput += ExtraSettingsAPI.mods[mod].GetInputValidation(this);
         }
 
         public void SetValue(string newValue, bool local, SetFlags flags = SetFlags.All)

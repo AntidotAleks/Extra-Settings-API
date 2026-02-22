@@ -266,33 +266,43 @@ namespace _ExtraSettingsAPI
             return "{null}";
         }
         
-        public InputField.OnValidateInput  GetInputValidation(string name)
+        public InputField.OnValidateInput GetInputValidation(ModSetting_Input input)
         {
+            string eventName = EventNames[EventTypes.InputValidation];
+            
             try
             {
-                var t = modTraverse.Field("ExtraSettingsAPI_InputValidation");
-                if (!t.FieldExists())
-                    t = modTraverse.Property("ExtraSettingsAPI_InputValidation");
-                if (!t.FieldExists() && !t.PropertyExists())
+                var traverse = modTraverse.Field(eventName);
+                if (traverse.FieldExists()) return GetDelegateFromValue(traverse.GetValue());
+                
+                traverse = modTraverse.Property(eventName);
+                if (traverse.PropertyExists()) return GetDelegateFromValue(traverse.GetValue());
+                
+                traverse = modTraverse.Method(eventName, new[] { typeof(string), typeof(string), typeof(int), typeof(char) });
+                if (traverse.MethodExists()) return (t, i, c) => traverse.GetValue(input.name, t, i, c) is char resultChar ? resultChar : c;
+                
+                ExtraSettingsAPI.LogWarning($"{parent.name} does not contain an appropriate definition for {eventName}. Setting {input.nameText} requires this because its content type is {input.contentType}");
+                return null;
+
+
+                InputField.OnValidateInput GetDelegateFromValue(object result)
                 {
-                    ExtraSettingsAPI.LogWarning($"{parent.name} does not contain an appropriate definition for ExtraSettingsAPI_InputValidation. Setting {name} requires this because its content type is Custom");
-                    return null;
+                    switch (result)
+                    {
+                        case InputField.OnValidateInput func:
+                            return func;
+                        case IDictionary<string, InputField.OnValidateInput> dict:
+                            if (dict.TryGetValue(input.name, out var validateInput))
+                                return validateInput;
+                            ExtraSettingsAPI.LogWarning(
+                                $"{parent.name} contains a dictionary for {eventName} but it does not contain an entry for {input.nameText}. Setting {input.nameText} requires this because its content type is {input.contentType}");
+                            return null;
+                        default:
+                            ExtraSettingsAPI.LogWarning($"{parent.name} contains a definition for {eventName} but it is not of the correct type.");
+                            return null;
+                    }
                 }
-                var result = t.GetValue();
-                switch (result)
-                {
-                    case InputField.OnValidateInput func:
-                        return func;
-                    case IDictionary<string, InputField.OnValidateInput> dict:
-                        if (dict.TryGetValue(name, out var validateInput))
-                            return validateInput;
-                        ExtraSettingsAPI.LogWarning($"{parent.name} contains a dictionary for ExtraSettingsAPI_InputValidation but it does not contain an entry for {name}. Setting {name} requires this because its content type is Custom");
-                        break;
-                    default:
-                        ExtraSettingsAPI.LogWarning($"{parent.name} contains a definition for ExtraSettingsAPI_InputValidation but it is not of the correct type.");
-                        break;
-                }
-            } 
+            }
             catch (Exception e) { ExtraSettingsAPI.LogError(e); }
             return null;
         }
@@ -339,6 +349,7 @@ namespace _ExtraSettingsAPI
             Button,
             Create,
             Slider,
+            InputValidation,
             Access,
             WorldLoad,
             WorldExit
@@ -352,6 +363,7 @@ namespace _ExtraSettingsAPI
         { EventTypes.Button, "ExtraSettingsAPI_ButtonPress" },
         { EventTypes.Create, "ExtraSettingsAPI_SettingsCreate" },
         { EventTypes.Slider, "ExtraSettingsAPI_HandleSliderText" },
+        { EventTypes.InputValidation, "ExtraSettingsAPI_InputValidation" },
         { EventTypes.Access, "ExtraSettingsAPI_HandleSettingVisible" },
         { EventTypes.WorldLoad, "ExtraSettingsAPI_WorldLoad" },
         { EventTypes.WorldExit, "ExtraSettingsAPI_WorldUnload" }
