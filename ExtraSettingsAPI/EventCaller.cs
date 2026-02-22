@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Linq;
+using UnityEngine.UI;
 using Debug = UnityEngine.Debug;
 
 namespace _ExtraSettingsAPI
@@ -263,6 +264,37 @@ namespace _ExtraSettingsAPI
                 Debug.LogError(e);
             }
             return "{null}";
+        }
+        
+        public InputField.OnValidateInput  GetInputValidation(string name)
+        {
+            try
+            {
+                var t = modTraverse.Field("ExtraSettingsAPI_InputValidation");
+                if (!t.FieldExists())
+                    t = modTraverse.Property("ExtraSettingsAPI_InputValidation");
+                if (!t.FieldExists() && !t.PropertyExists())
+                {
+                    ExtraSettingsAPI.LogWarning($"{parent.name} does not contain an appropriate definition for ExtraSettingsAPI_InputValidation. Setting {name} requires this because its content type is Custom");
+                    return null;
+                }
+                var result = t.GetValue();
+                switch (result)
+                {
+                    case InputField.OnValidateInput func:
+                        return func;
+                    case IDictionary<string, InputField.OnValidateInput> dict:
+                        if (dict.TryGetValue(name, out var validateInput))
+                            return validateInput;
+                        ExtraSettingsAPI.LogWarning($"{parent.name} contains a dictionary for ExtraSettingsAPI_InputValidation but it does not contain an entry for {name}. Setting {name} requires this because its content type is Custom");
+                        break;
+                    default:
+                        ExtraSettingsAPI.LogWarning($"{parent.name} contains a definition for ExtraSettingsAPI_InputValidation but it is not of the correct type.");
+                        break;
+                }
+            } 
+            catch (Exception e) { ExtraSettingsAPI.LogError(e); }
+            return null;
         }
 
         public bool GetSettingVisible(ModSetting setting)

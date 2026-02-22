@@ -81,6 +81,10 @@ namespace _ExtraSettingsAPI
             input.contentType = contentType;
             input.text = value.current;
             input.onEndEdit.AddListener(t => SetValue(t, ExtraSettingsAPI.IsInWorld, SetFlags.All ^ SetFlags.Control));
+            
+            if (contentType != InputField.ContentType.Custom) return;
+            var mod = parent.parent;
+            input.onValidateInput += ExtraSettingsAPI.mods[mod].GetInputValidation(name);
         }
 
         public void SetValue(string newValue, bool local, SetFlags flags = SetFlags.All)
