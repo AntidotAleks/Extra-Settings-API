@@ -2,6 +2,8 @@
 using Newtonsoft.Json.Linq;
 using System;
 using System.Globalization;
+using System.Runtime.CompilerServices;
+using HMLLibrary;
 using UnityEngine;
 using UnityEngine.UI;
 using Object = UnityEngine.Object;
@@ -73,14 +75,31 @@ namespace _ExtraSettingsAPI
             return false;
         }
 
+        public string LastText = "";
+        public static readonly ConditionalWeakTable<InputField, ModSetting_Input> InputCache = new ConditionalWeakTable<InputField, ModSetting_Input>();
+
         public override void SetGameObject(GameObject go)
         {
             base.SetGameObject(go);
             input = control.GetComponentInChildren<InputField>(true);
             input.characterLimit = maxLength > 0 ? maxLength : int.MaxValue;
             input.contentType = contentType;
-            input.text = value.current;
+            input.text = LastText = value.current;
             input.onEndEdit.AddListener(t => SetValue(t, ExtraSettingsAPI.IsInWorld, SetFlags.All ^ SetFlags.Control));
+            
+            if (contentType != InputField.ContentType.Custom) return;
+            var eventCaller = ExtraSettingsAPI.mods[parent.parent];
+            input.onValueChanged.AddListener(t =>
+            {
+                var result = eventCaller.InputValueChange(this, t, input.caretPosition);
+                var listener = input.onValueChanged;
+                input.onValueChanged = new InputField.OnChangeEvent();
+                input.text = LastText = result.text;
+                input.caretPosition = result.caretPos;
+                input.selectionFocusPosition = result.caretPos;
+                input.onValueChanged = listener;
+            });
+            InputCache.Add(input, this);
         }
 
         public void SetValue(string newValue, bool local, SetFlags flags = SetFlags.All)

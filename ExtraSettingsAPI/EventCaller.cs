@@ -52,7 +52,7 @@ namespace _ExtraSettingsAPI
                 }
             }
             foreach (KeyValuePair<EventTypes, string> pair in EventNames)
-                if (pair.Key != EventTypes.Button)
+                if (pair.Key != EventTypes.Button && pair.Key != EventTypes.InputValueChange && pair.Key != EventTypes.InputCaretMove)
                     settingsEvents.Add(pair.Key, modTraverse.Method(pair.Value, new Type[] { }, new object[] { }));
             APIBool = modTraverse.Field<bool>("ExtraSettingsAPI_Loaded");
             modTraverse.Field<Traverse>("ExtraSettingsAPI_Traverse").Value = ExtraSettingsAPI.self;
@@ -212,7 +212,9 @@ namespace _ExtraSettingsAPI
 
         public void Call(EventTypes eventType)
         {
-            if (eventType == EventTypes.Button)
+            if (eventType == EventTypes.Button || 
+                eventType == EventTypes.InputValueChange || 
+                eventType == EventTypes.InputCaretMove)
                 return;
             if (eventType == EventTypes.Create)
                 ExtraSettingsAPI.generateSettings(parent);
@@ -240,6 +242,50 @@ namespace _ExtraSettingsAPI
         public void ButtonPress(ModSetting_MultiButton button, int index)
         {
             modTraverse.Method(EventNames[EventTypes.Button], new Type[] { typeof(string), typeof(int) }, new object[] { button.name, index }).GetValue();
+        }
+        
+        public (string text, int caretPos) InputValueChange(ModSetting_Input input, string text, int caretPos)
+        {
+            try
+            {
+                var method = modTraverse.Method(EventNames[EventTypes.InputValueChange],
+                    new[] { typeof(string), typeof(string), typeof(int) },
+                    new object[] { input.name, text, caretPos });
+
+                if (!method.MethodExists())
+                    return (text, caretPos);
+                var result = method.GetValue();
+                if (result is ValueTuple<string, int> t)
+                    return t;
+                return (text, caretPos);
+            } 
+            catch (Exception e)
+            {
+                Debug.LogError(e);
+                return (text, caretPos);
+            }
+        }
+
+        public (int caret, int anchor) InputCaretMove(ModSetting_Input input, string text, int caretPos, int anchorPos)
+        {
+            try
+            {
+                var method = modTraverse.Method(EventNames[EventTypes.InputCaretMove],
+                    new[] { typeof(string), typeof(string), typeof(int), typeof(int) },
+                    new object[]{ input.name, text, caretPos, anchorPos });
+                
+                if (!method.MethodExists())
+                    return (caretPos, anchorPos);
+                var result = method.GetValue();
+                if (result is ValueTuple<int, int> t)
+                    return t;
+                return (caretPos, anchorPos);
+            }
+            catch (Exception e)
+            {
+                Debug.LogError(e);
+                return (caretPos, anchorPos);
+            }
         }
 
         public string GetSliderText(ModSetting_Slider slider, float value)
@@ -309,7 +355,9 @@ namespace _ExtraSettingsAPI
             Slider,
             Access,
             WorldLoad,
-            WorldExit
+            WorldExit,
+            InputValueChange,
+            InputCaretMove
         }
         public static Dictionary<EventTypes, string> EventNames = new Dictionary<EventTypes, string>
     {
@@ -322,7 +370,9 @@ namespace _ExtraSettingsAPI
         { EventTypes.Slider, "ExtraSettingsAPI_HandleSliderText" },
         { EventTypes.Access, "ExtraSettingsAPI_HandleSettingVisible" },
         { EventTypes.WorldLoad, "ExtraSettingsAPI_WorldLoad" },
-        { EventTypes.WorldExit, "ExtraSettingsAPI_WorldUnload" }
+        { EventTypes.WorldExit, "ExtraSettingsAPI_WorldUnload" },
+        { EventTypes.InputValueChange, "ExtraSettingsAPI_InputValueChange" },
+        { EventTypes.InputCaretMove, "ExtraSettingsAPI_InputCaretMove" }
     };
     }
 }

@@ -1,12 +1,15 @@
 ﻿using HarmonyLib;
 using UnityEngine;
 using System;
+using System.Collections;
 using System.Reflection;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection.Emit;
 using PrivateAccess;
 using System.IO;
+using Sirenix.Utilities;
+using UnityEngine.UI;
 
 
 namespace _ExtraSettingsAPI
@@ -150,6 +153,63 @@ namespace _ExtraSettingsAPI
         {
             if (!Raft_Network.IsHost)
                 ExtraSettingsAPI.generateSaveJson(ExtraSettingsAPI.worldConfigPath);
+        }
+    }
+
+
+    [HarmonyPatch(typeof(InputField))]
+    static class Patch_OrderCaretSelect
+    {
+        private static MethodInfo CaretPosSet = AccessTools.Property(typeof(InputField), "caretPositionInternal").GetSetMethod(true);
+        private static MethodInfo CaretSelPosSet = AccessTools.Property(typeof(InputField), "caretSelectPositionInternal").GetSetMethod(true);
+        
+        static IEnumerable<MethodBase> TargetMethods()
+        {
+            // Use AccessTools.Method or reflection to find the methods you want
+            yield return AccessTools.Method(typeof(InputField), "MoveRight");
+            yield return AccessTools.Method(typeof(InputField), "MoveLeft");
+            yield return AccessTools.Method(typeof(InputField), "MoveDown", new []{typeof(bool), typeof(bool)});
+            yield return AccessTools.Method(typeof(InputField), "MoveUp", new []{typeof(bool), typeof(bool)});
+        }
+        
+        static IEnumerable Transpiler(IEnumerable<CodeInstruction> instructions)
+        {
+            var code = instructions.ToList();
+            for (var i = 0; i < code.Count - 4; i++)
+            {
+                if (!(
+                        code[i    ].opcode == OpCodes.Stloc_1 &&
+                        code[i + 1].opcode == OpCodes.Call &&
+                        code[i + 2].opcode == OpCodes.Ldloc_1 &&
+                        code[i + 3].opcode == OpCodes.Call &&
+                        
+                        code[i + 1].operand is MethodInfo m1 && m1 == CaretSelPosSet &&
+                        code[i + 3].operand is MethodInfo m2 && m2 == CaretPosSet
+                    )) continue;
+                code[i + 1].operand = CaretPosSet;
+                code[i + 3].operand = CaretSelPosSet;
+            }
+            return code;
+        }
+    }
+    
+    [HarmonyPatch(typeof(InputField), "caretSelectPositionInternal", MethodType.Setter)]
+    static class Patch_InputField_CallCaretMoveEvent
+    {
+        private static PropertyInfo caretPosInfo = AccessTools.Property(typeof(InputField), "caretPositionInternal");
+        
+        public static void Prefix(InputField __instance, ref int value)
+        {
+            if (!ModSetting_Input.InputCache.TryGetValue(__instance, out var input)) return;
+            if (input.LastText != __instance.text) return;
+            
+            var mod = input.parent.parent;
+            var tl = __instance.text.Length;
+            value = value<0?0 : value>tl?tl : value;
+            var result = ExtraSettingsAPI.mods[mod].InputCaretMove(input, __instance.text, value, (int)caretPosInfo.GetValue(__instance));
+            
+            caretPosInfo.SetValue(__instance, result.anchor);
+            value = result.caret;
         }
     }
 
