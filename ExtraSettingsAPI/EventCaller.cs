@@ -266,42 +266,15 @@ namespace _ExtraSettingsAPI
             return "{null}";
         }
         
-        public InputField.OnValidateInput GetInputValidation(ModSetting_Input input)
+        public FastFunc<string, string, int, char, char> GetInputValidation(ModSetting_Input input)
         {
             string eventName = EventNames[EventTypes.InputValidation];
-            
             try
             {
-                var traverse = modTraverse.Field(eventName);
-                if (traverse.FieldExists()) return GetDelegateFromValue(traverse.GetValue());
-                
-                traverse = modTraverse.Property(eventName);
-                if (traverse.PropertyExists()) return GetDelegateFromValue(traverse.GetValue());
-                
-                traverse = modTraverse.Method(eventName, new[] { typeof(string), typeof(string), typeof(int), typeof(char) });
-                if (traverse.MethodExists()) return (t, i, c) => traverse.GetValue(input.name, t, i, c) is char resultChar ? resultChar : c;
+                var methodInfo = AccessTools.Method(input.parent.parent.GetType(), eventName, new[] { typeof(string), typeof(string), typeof(int), typeof(char) });
+                if (methodInfo != null) return new FastFunc<string, string, int, char, char>(methodInfo);
                 
                 ExtraSettingsAPI.LogWarning($"{parent.name} does not contain an appropriate definition for {eventName}. Setting {input.nameText} requires this because its content type is {input.contentType}");
-                return null;
-
-
-                InputField.OnValidateInput GetDelegateFromValue(object result)
-                {
-                    switch (result)
-                    {
-                        case InputField.OnValidateInput func:
-                            return func;
-                        case IDictionary<string, InputField.OnValidateInput> dict:
-                            if (dict.TryGetValue(input.name, out var validateInput))
-                                return validateInput;
-                            ExtraSettingsAPI.LogWarning(
-                                $"{parent.name} contains a dictionary for {eventName} but it does not contain an entry for {input.nameText}. Setting {input.nameText} requires this because its content type is {input.contentType}");
-                            return null;
-                        default:
-                            ExtraSettingsAPI.LogWarning($"{parent.name} contains a definition for {eventName} but it is not of the correct type.");
-                            return null;
-                    }
-                }
             }
             catch (Exception e) { ExtraSettingsAPI.LogError(e); }
             return null;
