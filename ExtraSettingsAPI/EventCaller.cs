@@ -266,17 +266,23 @@ namespace _ExtraSettingsAPI
             return "{null}";
         }
         
-        public FastFunc<string, string, int, char, char> GetInputValidation(ModSetting_Input input)
+        public InputField.OnValidateInput GetInputValidation(ModSetting_Input input)
         {
             string eventName = EventNames[EventTypes.InputValidation];
             try
             {
-                var methodInfo = AccessTools.Method(input.parent.parent.GetType(), eventName, new[] { typeof(string), typeof(string), typeof(int), typeof(char) });
-                if (methodInfo != null) return new FastFunc<string, string, int, char, char>(methodInfo);
-                
-                ExtraSettingsAPI.LogWarning($"{parent.name} does not contain an appropriate definition for {eventName}. Setting {input.nameText} requires this because its content type is {input.contentType}");
+                var instance = modTraverse.GetValue();
+                // (string settingName, string t, int i, char c)
+                var methodInfo = AccessTools.Method(instance.GetType(), eventName, new[] { typeof(string),typeof(string),typeof(int),typeof(char) });
+                if (methodInfo != null)
+                {
+                    var invoker = MethodInvoker.GetHandler(methodInfo);
+                    if (methodInfo.IsStatic) return (t,i,c) => (char)invoker.Invoke(null, input.name, t, i, c);
+                    return (t,i,c) => (char)invoker.Invoke(instance, input.name, t, i, c);
+                }
             }
             catch (Exception e) { ExtraSettingsAPI.LogError(e); }
+            ExtraSettingsAPI.LogWarning($"{parent.name} does not contain an appropriate definition for {eventName}. Setting {input.nameText} requires this because its content type is {input.contentType}");
             return null;
         }
 
