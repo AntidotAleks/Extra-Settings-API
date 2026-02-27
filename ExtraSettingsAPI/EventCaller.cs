@@ -276,9 +276,9 @@ namespace _ExtraSettingsAPI
                 var methodInfo = AccessTools.Method(instance.GetType(), eventName, new[] { typeof(string),typeof(string),typeof(int),typeof(char) });
                 if (methodInfo != null)
                 {
-                    var invoker = MethodInvoker.GetHandler(methodInfo);
-                    if (methodInfo.IsStatic) return (t,i,c) => (char)invoker.Invoke(null, input.name, t, i, c);
-                    return (t,i,c) => (char)invoker.Invoke(instance, input.name, t, i, c);
+                    var handler = MethodInvoker.GetHandler(methodInfo);
+                    var target = methodInfo.IsStatic ? null : instance;
+                    return (t,i,c) => (char)handler.Invoke(target, input.name, t, i, c);
                 }
             }
             catch (Exception e) { ExtraSettingsAPI.LogError(e); }
