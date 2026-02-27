@@ -274,7 +274,7 @@ namespace _ExtraSettingsAPI
                 var instance = modTraverse.GetValue();
                 // (string settingName, string t, int i, char c)
                 var methodInfo = AccessTools.Method(instance.GetType(), eventName, new[] { typeof(string),typeof(string),typeof(int),typeof(char) });
-                if (methodInfo != null)
+                if (methodInfo != null && methodInfo.ReturnType == typeof(char))
                 {
                     var handler = MethodInvoker.GetHandler(methodInfo);
                     var target = methodInfo.IsStatic ? null : instance;
